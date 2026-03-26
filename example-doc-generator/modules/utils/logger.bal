@@ -7,7 +7,7 @@ final string ESC = "\u{1B}";
 #
 # Supported labels and their colours:
 #   [STEP ...]  bold cyan     — pipeline step headers
-#   [INFO]      dim white     — informational messages
+#   [INFO]      green         — informational messages
 #   [ERROR]     bold red      — error messages
 #   [SESSION]   bold cyan
 #   [SYSTEM]    blue

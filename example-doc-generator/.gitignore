@@ -60,9 +60,8 @@ temp/
 .cache/
 
 # Environment
-.env
-.env.local
-.env.*.local
+.env*
+!.env.example
 
 # Ballerina config (contains secrets)
 Config.toml

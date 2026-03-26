@@ -57,9 +57,13 @@ public function runClaudeAgent(string promptPath, string agentUrl) returns Agent
     utils:log("\t[INFO] Job submitted: " + jobId);
 
     // Poll every second; print new log lines as they arrive
+    // Limit to 5400 attempts (90 minutes) to prevent infinite hangs.
     int lastLogCount = 0;
-    while true {
+    int attempts = 0;
+    int maxAttempts = 5400;
+    while attempts < maxAttempts {
         runtime:sleep(1);
+        attempts += 1;
         http:Response pollResp = check agentClient->get(string `/jobs/${jobId}`);
         json pollBody = check pollResp.getJsonPayload();
         JobStatus jobStatus = check pollBody.cloneWithType(JobStatus);
@@ -75,5 +79,9 @@ public function runClaudeAgent(string promptPath, string agentUrl) returns Agent
             utils:log("\t[INFO] Claude agent finished.");
             return jobStatus.cost;
         }
+        if jobStatus.status == "error" {
+            return error(string `Agent job ${jobId} failed. Check agent logs for details.`);
+        }
     }
+    return error(string `Agent job ${jobId} did not complete within ${maxAttempts} seconds.`);
 }

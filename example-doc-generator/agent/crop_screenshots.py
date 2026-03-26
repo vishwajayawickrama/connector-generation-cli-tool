@@ -3,8 +3,8 @@ crop_screenshots.py — Post-process pipeline screenshots by cropping UI chrome.
 
 Default margins are tuned for a 1720×968 headless Playwright / code-server viewport.
 Only the VS Code tab bar (top) and status bar (bottom) are removed — no left/right crop:
-  top    = 36   (VS Code tab bar row)
-  bottom = 22   (VS Code status bar)
+  top    = 32   (VS Code tab bar row)
+  bottom = 18   (VS Code status bar)
   left   = 0
   right  = 0
 

@@ -8,8 +8,8 @@ import ballerina/lang.runtime;
 public function checkAgentServerRunning(int port) returns boolean {
     os:Process|error proc = os:exec({
         value: "curl",
-        arguments: ["-s", "-o", "/dev/null", "-w", "%{http_code}",
-                    "--max-time", "3", "http://localhost:" + port.toString() + "/health"]
+        arguments: ["-sf", "--max-time", "3",
+                    "http://localhost:" + port.toString() + "/health"]
     });
     if proc is error {
         return false;

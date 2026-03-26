@@ -95,7 +95,7 @@ public function main() returns error? {
 
     // Step 6: Build system and user prompts
     utils:log("[STEP 6] Building system and user prompts...");
-    string projectRoot = os:getEnv("PWD");
+    string projectRoot = file:getCurrentDir() ?: os:getEnv("PWD");
     string systemPrompt = prompts:buildSystemPrompt(projectRoot);
     string userMessage = prompts:buildUserMessage(userGoal, codeServerUrl, projectRoot);
 

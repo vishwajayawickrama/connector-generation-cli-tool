@@ -257,8 +257,9 @@ public function generateGoalSlug(string goal, string apiKey) returns LlmResult|e
         return error("Empty response when generating goal slug");
     }
 
-    // Sanitize: lowercase, trim, remove anything not alphanumeric or hyphen
+    // Sanitize: lowercase → spaces to hyphens → strip non-alphanumeric/hyphen → collapse hyphens
     string slug = content.trim().toLowerAscii();
+    slug = re `\s+`.replaceAll(slug, "-");
     slug = re `[^a-z0-9\-]`.replaceAll(slug, "");
     slug = re `-+`.replaceAll(slug, "-");
 

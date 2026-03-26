@@ -4,7 +4,7 @@ append_examples_link.py
 
 Post-processing step: fetches the Examples section from the connector's Ballerina
 Central readme (via registry API) and appends it to the workflow doc under the
-heading '## More Code Examples'.
+heading '## More code examples'.
 
 Usage: python append_examples_link.py <doc_path>
 
@@ -13,7 +13,7 @@ Strategy:
   2. Query the Ballerina Central registry API (/latest) to get package metadata.
   3. Extract the 'readme' field (markdown) from the response.
   4. Parse out the '## Examples' section from the readme.
-  5. Append the section content under '## More Code Examples' (not the original heading).
+  5. Append the section content under '## More code examples' (not the original heading).
 """
 
 import json
@@ -99,7 +99,7 @@ def main() -> None:
 
     # Idempotency: skip if already appended
     if "## More code examples" in content:
-        print("[INFO] append_examples_link: 'More Code Examples' section already present — skipping.")
+        print("[INFO] append_examples_link: 'More code examples' section already present — skipping.")
         sys.exit(0)
 
     connector_name = extract_connector_name(content)
@@ -123,7 +123,7 @@ def main() -> None:
         print(f"[INFO] append_examples_link: no Examples section found in readme for '{connector_name}' — skipping.")
         sys.exit(0)
 
-    print(f"[INFO] append_examples_link: found Examples section — appending as '## More Code Examples'.")
+    print("[INFO] append_examples_link: found Examples section — appending as '## More code examples'.")
     doc_path.write_text(content.rstrip() + "\n" + build_section(examples_body), encoding="utf-8")
     print("[INFO] append_examples_link: done.")
 
