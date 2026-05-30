@@ -21,6 +21,16 @@ const string IR_OUTPUT_DIR = "modules/api_specification_generator/IR-output";
 const string SPEC_OUTPUT_DIR = "modules/api_specification_generator/spec-output";
 const string CONNECTOR_OUTPUT_DIR = "modules/connector_generator/output";
 
+type WorkflowExecutor function(string[] args) returns error?;
+type UsagePrinter function();
+
+type WorkflowCommand record {|
+    string name;
+    string description;
+    WorkflowExecutor execute;
+    UsagePrinter printUsage;
+|};
+
 public function main(string... args) returns error? {
     if args.length() == 0 {
         printMainUsage();
@@ -28,14 +38,20 @@ public function main(string... args) returns error? {
     }
 
     string command = args[0];
+    map<WorkflowCommand> workflows = getWorkflowRegistry();
+
+    if workflows.hasKey(command) {
+        WorkflowCommand workflow = workflows.get(command);
+        WorkflowExecutor execute = workflow.execute;
+        return execute(args.slice(1));
+    }
+
+    if command == "help" {
+        printMainUsage();
+        return;
+    }
 
     match command {
-        "sdk" => {
-            return executeSdkCommand(args.slice(1));
-        }
-        "openapi" => {
-            return executeOpenApiCommand(args.slice(1));
-        }
         "analyze" => {
             return executeAnalyze(args.slice(1));
         }
@@ -63,14 +79,28 @@ public function main(string... args) returns error? {
         "generate-docs" => {
             return executeGenerateDocs(args.slice(1));
         }
-        "help" => {
-            printMainUsage();
-        }
         _ => {
             printMainUsage();
             return error(string `Unknown command: ${command}`);
         }
     }
+}
+
+function getWorkflowRegistry() returns map<WorkflowCommand> {
+    return {
+        sdk: {
+            name: "sdk",
+            description: "SDK (Java SDK) workflow",
+            execute: executeSdkCommand,
+            printUsage: printSdkUsage
+        },
+        openapi: {
+            name: "openapi",
+            description: "OpenAPI spec workflow",
+            execute: executeOpenApiCommand,
+            printUsage: printOpenApiUsage
+        }
+    };
 }
 
 function executeAnalyze(string[] args) returns error? {
@@ -1756,8 +1786,9 @@ function printMainUsage() {
     io:println("Connector Automator");
     io:println();
     io:println("USAGE:");
-    io:println("  bal run -- sdk <command> [args...]      SDK (Java SDK) workflow");
-    io:println("  bal run -- openapi <command> [args...]  OpenAPI spec workflow");
+    foreach WorkflowCommand workflow in getWorkflowRegistry() {
+        io:println(string `  bal run -- ${workflow.name} <command> [args...]      ${workflow.description}`);
+    }
     io:println();
     io:println("SDK COMMANDS:");
     io:println("  sdk analyze <dataset-key> <output-dir>     Analyze Java SDK");
