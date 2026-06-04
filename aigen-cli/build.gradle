@@ -35,13 +35,18 @@ def ballerinaLibDir = file("${ballerinaHome}/bre/lib")
 repositories {
     mavenCentral()
     flatDir {
-        dirs 'libs', '../aigen-core/connector_automator/target/bin'
+        dirs 'libs', 
+                '../aigen-core/connector_automator/target/bin',
+                '../aigen-core/connector_doc_generator/target/bin',
+                '../aigen-core/example-doc-generator/target/bin'
     }
 }
 
 dependencies {
     compileOnly fileTree(dir: ballerinaLibDir, include: ['ballerina-cli-*.jar', 'ballerina-rt-*.jar', 'picocli-*.jar'])
     runtimeOnly ':connector_automator'
+    runtimeOnly ':connector-doc-generator'
+    runtimeOnly ':example-doc-generator'
 }
 
 jar {
