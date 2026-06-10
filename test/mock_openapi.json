@@ -3,7 +3,7 @@
   "info": {
     "title": "Mock API",
     "version": "1.0.0",
-    "description": "A mock OpenAPI spec to test the aigen openapi command."
+    "description": "A mock OpenAPI spec to test the connector openapi command."
   },
   "paths": {
     "/hello": {
