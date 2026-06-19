@@ -339,14 +339,14 @@ function runGradleBuild(string projectPath, boolean quietMode = true, boolean ve
     };
 }
 
-public function fixJavaNativeAdaptorErrors(string projectPath, utils:LogLevel logLevel = "quiet",
+public function fixJavaNativeAdaptorErrors(string projectPath,
         boolean autoYes = true, int iterationLimit = maxIterations)
         returns FixResult|BallerinaFixerError {
-    boolean quietMode = logLevel == "quiet";
-    boolean verboseMode = logLevel == "verbose";
+    boolean quietMode = utils:getLogLevel() == "quiet";
+    boolean verboseMode = utils:getLogLevel() == "verbose";
 
     if !utils:isAIServiceInitialized() {
-        error? initResult = utils:initAIService(logLevel);
+        error? initResult = utils:initAIService();
         if initResult is error {
             return error BallerinaFixerError("Failed to initialize AI service", initResult);
         }
@@ -364,9 +364,9 @@ public function fixJavaNativeAdaptorErrors(string projectPath, utils:LogLevel lo
         io:fprintln(io:stderr, string `  Starting Java native fixer: ${projectPath} (limit=${iterationLimit})`);
     }
 
-    error? preCleanupError = cleanupFixerBackups(projectPath, logLevel);
+    error? preCleanupError = cleanupFixerBackups(projectPath);
     if preCleanupError is error {
-        utils:logWarn(string `Failed to clean stale backup files: ${preCleanupError.message()}`, logLevel);
+        utils:logWarn(string `Failed to clean stale backup files: ${preCleanupError.message()}`);
     }
 
     int iteration = 1;
@@ -400,7 +400,7 @@ public function fixJavaNativeAdaptorErrors(string projectPath, utils:LogLevel lo
         CompilationError[] currentErrors = parseJavaCompilationErrors(diagnostics, projectPath);
 
         if currentErrors.length() == 0 {
-            utils:logWarn("Gradle build failed but no parseable Java errors found (non-javac failure)", logLevel);
+            utils:logWarn("Gradle build failed but no parseable Java errors found (non-javac failure)");
             result.errorsRemaining = 1;
             result.javaErrorsRemaining = 1;
             result.success = false;
@@ -435,7 +435,7 @@ public function fixJavaNativeAdaptorErrors(string projectPath, utils:LogLevel lo
 
         foreach string filePath in errorsByFile.keys() {
             CompilationError[] fileErrors = errorsByFile.get(filePath);
-            FixResponse|error fixResponse = fixFileWithLLM(projectPath, filePath, fileErrors, logLevel);
+            FixResponse|error fixResponse = fixFileWithLLM(projectPath, filePath, fileErrors);
             if fixResponse is error {
                 if verboseMode {
                     io:fprintln(io:stderr, string `  Failed to generate fix for Java file ${filePath}: ${fixResponse.message()}`);
@@ -447,7 +447,7 @@ public function fixJavaNativeAdaptorErrors(string projectPath, utils:LogLevel lo
 
             boolean shouldApplyFix = autoYes;
             if shouldApplyFix {
-                boolean|error applyResult = applyFix(projectPath, filePath, fixResponse.fixedCode, logLevel);
+                boolean|error applyResult = applyFix(projectPath, filePath, fixResponse.fixedCode);
                 if applyResult is error {
                     result.remainingFixes.push(string `Iteration ${iteration}: Failed to apply fix to ${filePath}: ${applyResult.message()}`);
                     continue;
@@ -471,7 +471,7 @@ public function fixJavaNativeAdaptorErrors(string projectPath, utils:LogLevel lo
         }
 
         if !anyFixApplied {
-            utils:logWarn(string `no Java fixes applied in iteration ${iteration}, stopping`, logLevel);
+            utils:logWarn(string `no Java fixes applied in iteration ${iteration}, stopping`);
             result.remainingFixes.push(string `Iteration ${iteration}: No Java fixes applied`);
             break;
         }
@@ -516,9 +516,9 @@ public function fixJavaNativeAdaptorErrors(string projectPath, utils:LogLevel lo
         }
     }
 
-    error? postCleanupError = cleanupFixerBackups(projectPath, logLevel);
+    error? postCleanupError = cleanupFixerBackups(projectPath);
     if postCleanupError is error {
-        utils:logWarn(string `Failed to clean backup files: ${postCleanupError.message()}`, logLevel);
+        utils:logWarn(string `Failed to clean backup files: ${postCleanupError.message()}`);
     }
 
     return result;
@@ -616,9 +616,9 @@ function inferErrorLanguage(CompilationError[] errors) returns string {
 
 // Fix errors in a single file
 public function fixFileWithLLM(string projectPath, string filePath, CompilationError[] errors,
-        utils:LogLevel logLevel = "quiet", FixAttempt[] previousAttempts = []) returns FixResponse|error {
-    boolean quietMode = logLevel == "quiet";
-    boolean verboseMode = logLevel == "verbose";
+        FixAttempt[] previousAttempts = []) returns FixResponse|error {
+    boolean quietMode = utils:getLogLevel() == "quiet";
+    boolean verboseMode = utils:getLogLevel() == "verbose";
 
     if verboseMode {
         io:fprintln(io:stderr, string `  Analyzing ${filePath} (${errors.length()} error${errors.length() == 1 ? "" : "s"})`);
@@ -1567,10 +1567,9 @@ function countMethodAnchors(string sourceCode) returns int {
 }
 
 // Apply fix to file
-public function applyFix(string projectPath, string filePath, string fixedCode,
-        utils:LogLevel logLevel = "quiet") returns boolean|error {
-    boolean quietMode = logLevel == "quiet";
-    boolean verboseMode = logLevel == "verbose";
+public function applyFix(string projectPath, string filePath, string fixedCode) returns boolean|error {
+    boolean quietMode = utils:getLogLevel() == "quiet";
+    boolean verboseMode = utils:getLogLevel() == "verbose";
 
     string fullFilePath = check file:joinPath(projectPath, filePath);
 
@@ -1648,14 +1647,14 @@ function getBackupPath(string fullFilePath) returns string {
     return fullFilePath + "_backup.bak";
 }
 
-function cleanupFixerBackups(string projectPath, utils:LogLevel logLevel = "normal") returns error? {
+function cleanupFixerBackups(string projectPath) returns error? {
     boolean exists = check file:test(projectPath, file:EXISTS);
     if !exists {
         return;
     }
     int count = check removeBackupFilesRecursive(projectPath);
     if count > 0 {
-        utils:logVerbose(string `Removed ${count} stale backup artifact(s)`, logLevel);
+        utils:logVerbose(string `Removed ${count} stale backup artifact(s)`);
     }
 }
 
@@ -1674,13 +1673,13 @@ function removeBackupFilesRecursive(string dir) returns int|error {
 }
 
 // Main function to fix all errors in a project
-public function fixAllErrors(string projectPath, utils:LogLevel logLevel = "quiet", boolean autoYes = false) returns FixResult|BallerinaFixerError {
-    boolean quietMode = logLevel == "quiet";
-    boolean verboseMode = logLevel == "verbose";
+public function fixAllErrors(string projectPath, boolean autoYes = false) returns FixResult|BallerinaFixerError {
+    boolean quietMode = utils:getLogLevel() == "quiet";
+    boolean verboseMode = utils:getLogLevel() == "verbose";
 
     // Initialize AI service if not already initialized
     if !utils:isAIServiceInitialized() {
-        error? initResult = utils:initAIService(logLevel);
+        error? initResult = utils:initAIService();
         if initResult is error {
             return error BallerinaFixerError("Failed to initialize AI service", initResult);
         }
@@ -1698,9 +1697,9 @@ public function fixAllErrors(string projectPath, utils:LogLevel logLevel = "quie
         io:fprintln(io:stderr, string `  Starting Ballerina fixer: ${projectPath}`);
     }
 
-    error? preCleanupError = cleanupFixerBackups(projectPath, logLevel);
+    error? preCleanupError = cleanupFixerBackups(projectPath);
     if preCleanupError is error {
-        utils:logWarn(string `Failed to clean stale backup files: ${preCleanupError.message()}`, logLevel);
+        utils:logWarn(string `Failed to clean stale backup files: ${preCleanupError.message()}`);
     }
 
     int iteration = 1;
@@ -1782,7 +1781,7 @@ public function fixAllErrors(string projectPath, utils:LogLevel logLevel = "quie
         }
 
         if currentErrors.length() == 0 {
-            utils:logWarn("Ballerina build still failed outside the fixer allowlist", logLevel);
+            utils:logWarn("Ballerina build still failed outside the fixer allowlist");
             result.success = false;
             result.errorsRemaining = parsedErrors.length() > 0 ? parsedErrors.length() : 1;
             result.errorsFixed = initialErrorCountSet ? initialErrorCount : 0;
@@ -1843,7 +1842,7 @@ public function fixAllErrors(string projectPath, utils:LogLevel logLevel = "quie
             CompilationError[] fileErrors = errorsByFile.get(filePath);
 
             FixAttempt[] previousAttempts = fileFixHistory.hasKey(filePath) ? fileFixHistory.get(filePath) : [];
-            FixResponse|error fixResponse = fixFileWithLLM(projectPath, filePath, fileErrors, logLevel,
+            FixResponse|error fixResponse = fixFileWithLLM(projectPath, filePath, fileErrors,
                     previousAttempts);
             if fixResponse is error {
                 if verboseMode {
@@ -1908,7 +1907,7 @@ public function fixAllErrors(string projectPath, utils:LogLevel logLevel = "quie
 
             if shouldApplyFix {
                 // Apply the fix
-                boolean|error applyResult = applyFix(projectPath, filePath, fixResponse.fixedCode, logLevel);
+                boolean|error applyResult = applyFix(projectPath, filePath, fixResponse.fixedCode);
                 if applyResult is error {
                     if !quietMode {
                         io:fprintln(io:stderr, string `  ✗ Failed to apply fix: ${applyResult.message()}`);
@@ -1989,9 +1988,9 @@ public function fixAllErrors(string projectPath, utils:LogLevel logLevel = "quie
         }
     }
 
-    error? postCleanupError = cleanupFixerBackups(projectPath, logLevel);
+    error? postCleanupError = cleanupFixerBackups(projectPath);
     if postCleanupError is error {
-        utils:logWarn(string `Failed to clean backup files: ${postCleanupError.message()}`, logLevel);
+        utils:logWarn(string `Failed to clean backup files: ${postCleanupError.message()}`);
     }
 
     // Print summary
